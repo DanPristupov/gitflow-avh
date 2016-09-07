@@ -655,9 +655,9 @@ require_branches_equal() {
 # Show commands if flag is set.
 #
 git_do() {
-	if flag showcommands; then
-		echo "git $@" >&2
-	fi
+#	if flag showcommands; then
+#		echo "git $@" >&2
+#	fi
 
 	git "$@"
 }
