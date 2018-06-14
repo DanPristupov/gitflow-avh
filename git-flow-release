@@ -1,3 +1,5 @@
+# $Id$
+# vim:et:ft=sh:sts=2:sw=2
 #
 # git-flow -- A collection of Git extensions to provide high-level
 # repository operations for Vincent Driessen's branching model.
@@ -9,7 +11,7 @@
 #    http://github.com/petervanderdoes/gitflow
 #
 # Authors:
-# Copyright 2012-2016 Peter van der Does. All rights reserved.
+# Copyright 2012-2017 Peter van der Does. All rights reserved.
 #
 # Original Author:
 # Copyright 2010 Vincent Driessen. All rights reserved.
@@ -56,7 +58,7 @@ _finish_from_develop() {
 		require_branches_equal "$BRANCH" "$ORIGIN/$BRANCH"
 	fi
 	if git_remote_branch_exists "$ORIGIN/$MASTER_BRANCH"; then
-		if flag ff-master; then
+		if flag ff_master; then
 			git_compare_refs "$MASTER_BRANCH" "$ORIGIN/$MASTER_BRANCH"
 			compare_refs_result=$?
 
@@ -565,7 +567,7 @@ v,verbose!           Verbose (more) output
 	require_no_existing_release_branches
 
 	# Sanity checks
-	require_clean_working_tree
+	git_config_bool_exists "gitflow.allowdirty" || require_clean_working_tree
 	require_branch_absent "$BRANCH"
 	require_tag_absent "$VERSION_PREFIX$VERSION"
 	if flag fetch; then
@@ -603,25 +605,26 @@ git flow release finish [-h] [-F] [-s] [-u] [-m | -f] [-p] [-k] [-n] [-b] [-S] <
 
 Finish a release branch
 --
-h,help               Show this help
-F,[no]fetch          Fetch from origin before performing finish
-s,sign!              Sign the release tag cryptographically
-u,signingkey!        Use the given GPG-key for the digital signature (implies -s)
-m,message!           Use the given tag message
-f,[no]messagefile=   Use the contents of the given file as a tag message
-p,[no]push           Push to origin after performing finish
-m,[no]pushproduction Push the production branch
-d,[no]pushdevelop    Push the develop branch
-t,[no]pushtag        Push the tag
-k,[no]keep           Keep branch after performing finish
-R,[no]keepremote     Keep the remote branch
-L,[no]keeplocal      Keep the local branch
-D,[no]force_delete   Force delete release branch after finish
-n,[no]tag            Don't tag this release
-b,[no]nobackmerge    Don't back-merge master, or tag if applicable, in develop
-S,[no]squash         Squash release during merge
-z,[no]ff-master      Fast forward master branch if possible
-T,tagname!           Use given tag name
+h,help              Show this help
+showcommands!       Show git commands while executing them
+F,[no]fetch         Fetch from origin before performing finish
+s,sign!             Sign the release tag cryptographically
+u,signingkey!       Use the given GPG-key for the digital signature (implies -s)
+m,message!          Use the given tag message
+f,[no]messagefile=  Use the contents of the given file as a tag message
+p,[no]push          Push to origin after performing finish
+[no]pushproduction  Push the production branch
+[no]pushdevelop     Push the develop branch
+[no]pushtag         Push the tag
+k,[no]keep          Keep branch after performing finish
+[no]keepremote      Keep the remote branch
+[no]keeplocal       Keep the local branch
+D,[no]force_delete  Force delete release branch after finish
+n,[no]tag           Don't tag this release
+b,[no]nobackmerge   Don't back-merge master, or tag if applicable, in develop
+S,[no]squash        Squash release during merge
+[no]ff-master       Fast forward master branch if possible
+T,tagname!          Use given tag name
 "
 	# Define flags
 	DEFINE_boolean 'fetch' false "fetch from $ORIGIN before performing finish" F
@@ -630,18 +633,18 @@ T,tagname!           Use given tag name
 	DEFINE_string  'message' "" "use the given tag message" m
 	DEFINE_string  'messagefile' "" "use the contents of the given file as a tag message" f
 	DEFINE_boolean 'push' false "push to $ORIGIN after performing finish" p
-	DEFINE_boolean 'pushproduction' false "push the production branch" P
-	DEFINE_boolean 'pushdevelop' false "push the develop branch" d
-	DEFINE_boolean 'pushtag' false "push the tag" t
+	DEFINE_boolean 'pushproduction' false "push the production branch"
+	DEFINE_boolean 'pushdevelop' false "push the develop branch"
+	DEFINE_boolean 'pushtag' false "push the tag"
 	DEFINE_boolean 'keep' false "keep branch after performing finish" k
-	DEFINE_boolean 'keepremote' false "keep the remote branch" R
-	DEFINE_boolean 'keeplocal' false "keep the local branch" L
+	DEFINE_boolean 'keepremote' false "keep the remote branch"
+	DEFINE_boolean 'keeplocal' false "keep the local branch"
 	DEFINE_boolean 'force_delete' false "force delete release branch after finish" D
 	DEFINE_boolean 'notag' false "don't tag this release" n
 	DEFINE_boolean 'nobackmerge' false "don't back-merge $MASTER_BRANCH, or tag if applicable, in $DEVELOP_BRANCH " b
 	DEFINE_boolean 'squash' false "squash release during merge" S
-	DEFINE_boolean 'squash-info' false "add branch info during squash" i
-	DEFINE_boolean 'ff-master' false "fast forward master branch if possible" z
+	DEFINE_boolean 'squash-info' false "add branch info during squash"
+	DEFINE_boolean 'ff-master' false "fast forward master branch if possible"
 	DEFINE_string  'tagname' "" "use the given tag name" T
 
 	# Override defaults with values from config
@@ -998,7 +1001,9 @@ p,[no]preserve-merges  Preserve merges
 	BASE_BRANCH=${BASE_BRANCH:-$DEVELOP_BRANCH}
 
 	warn "Will try to rebase '$NAME' which is based on '$BASE_BRANCH'..."
-	require_clean_working_tree
+	if ! git_config_bool_exists "rebase.autostash"; then
+		require_clean_working_tree
+	fi
 	require_branch "$BRANCH"
 
 	git_local_branch_exists "$BASE_BRANCH" || die "The base '$BASE_BRANCH' doesn't exists locally or is not a branch. Can't rebase the release branch '$BRANCH'."
@@ -1061,13 +1066,13 @@ r,[no]remote     Delete remote branch
 	if ( git_is_branch_merged_into "$BRANCH" "$MASTER_BRANCH" && git_is_branch_merged_into "$BRANCH" "$BASE_BRANCH" ); then
 		git_do branch -d "$BRANCH" || die "Could not delete the $BRANCH."
 		if flag remote; then
-			git_do push "$ORIGIN" :"$BRANCH" || die "Could not delete the remote $BRANCH in $ORIGIN."
+			git_remote_branch_delete "$BRANCH"
 		fi
 	else
 		if flag force; then
 			git_do branch -D "$BRANCH" || die "Could not delete the $BRANCH."
 			if flag remote; then
-				git_do push "$ORIGIN" :"$BRANCH" || die "Could not delete the remote $BRANCH in $ORIGIN."
+				git_remote_branch_delete "$BRANCH"
 			fi
 		else
 			die "Release branch '$BRANCH' has been not been merged in branch '$MASTER_BRANCH' and/or branch '$BASE_BRANCH'. Use -f to force the deletion."

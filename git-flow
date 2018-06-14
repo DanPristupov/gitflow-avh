@@ -10,7 +10,7 @@
 #    http://github.com/petervanderdoes/gitflow
 #
 # Authors:
-# Copyright 2012-2016 Peter van der Does. All rights reserved.
+# Copyright 2012-2017 Peter van der Does. All rights reserved.
 #
 # Original Author:
 # Copyright 2010 Vincent Driessen. All rights reserved.
@@ -119,10 +119,10 @@ main() {
 	. "$GITFLOW_DIR/gitflow-common"
 
 	# allow user to request git action logging
-	# DEFINE_boolean 'showcommands' false 'Show actions taken (git commands)'
+	DEFINE_boolean 'showcommands' false 'Show actions taken (git commands)'
 	# but if the user prefers that the logging is always on,
 	# use the environmental variables.
-	# gitflow_override_flag_boolean 'showcommands' 'showcommands'
+	gitflow_override_flag_boolean 'showcommands' 'showcommands'
 
 	# Sanity checks
 	SUBCOMMAND="$1"; shift

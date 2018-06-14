@@ -1,3 +1,5 @@
+# $Id$
+# vim:et:ft=sh:sts=2:sw=2
 #
 # git-flow -- A collection of Git extensions to provide high-level
 # repository operations for Vincent Driessen's branching model.
@@ -9,7 +11,7 @@
 #    http://github.com/petervanderdoes/gitflow
 #
 # Authors:
-# Copyright 2012-2016 Peter van der Does. All rights reserved.
+# Copyright 2012-2017 Peter van der Does. All rights reserved.
 #
 # Original Author:
 # Copyright 2010 Vincent Driessen. All rights reserved.
@@ -186,7 +188,7 @@ F,[no]fetch       Fetch from origin before performing local operation
 
 	# No need to continue if not clean
 	require_base_is_local_branch "$base"
-	require_clean_working_tree
+	git_config_bool_exists "gitflow.allowdirty" || require_clean_working_tree
 	gitflow_config_set_base_branch $base $BRANCH
 
 	# Update the local repo with remote changes, if asked
@@ -309,7 +311,9 @@ p,[no]preserve-merges  Preserve merges
 	BASE_BRANCH=${BASE_BRANCH:-$DEVELOP_BRANCH}
 
 	warn "Will try to rebase '$NAME' which is based on '$BASE_BRANCH'..."
-	require_clean_working_tree
+	if ! git_config_bool_exists "rebase.autostash"; then
+		require_clean_working_tree
+	fi
 	require_branch "$BRANCH"
 
 	git_local_branch_exists "$BASE_BRANCH" || die "The base '$BASE_BRANCH' doesn't exists locally or is not a branch. Can't rebase the hotfixe branch '$BRANCH'."
@@ -361,6 +365,7 @@ git flow hotfix finish [-h] [-F] [-s] [-u] [-m | -f ] [-p] [-k] [-n] [-b] [-S] <
 Finish hotfix branch <version>
 --
 h,help!               Show this help
+showcommands!         Show git commands while executing them
 F,[no]fetch           Fetch from origin before performing finish
 s,[no]sign            Sign the release tag cryptographically
 u,[no]signingkey      Use the given GPG-key for the digital signature (implies -s)
@@ -368,8 +373,8 @@ m,[no]message         Use the given tag message
 f,[no]messagefile=    Use the contents of the given file as tag message
 p,[no]push            Push to origin after performing finish
 k,[no]keep            Keep branch after performing finish
-R,[no]keepremote      Keep the remote branch
-L,[no]keeplocal       Keep the local branch
+[no]keepremote        Keep the remote branch
+[no]keeplocal         Keep the local branch
 D,[no]force_delete    Force delete hotfix branch after finish
 n,[no]notag           Don't tag this hotfix
 b,[no]nobackmerge     Don't back-merge master, or tag if applicable, in develop
@@ -386,13 +391,13 @@ T,tagname!            Use given tag name
 	DEFINE_string  'messagefile' "" "use the contents of the given file as tag message" f
 	DEFINE_boolean 'push' false "push to $ORIGIN after performing finish" p
 	DEFINE_boolean 'keep' false "keep branch after performing finish" k
-	DEFINE_boolean 'keepremote' false "keep the remote branch" R
-	DEFINE_boolean 'keeplocal' false "keep the local branch" L
+	DEFINE_boolean 'keepremote' false "keep the remote branch"
+	DEFINE_boolean 'keeplocal' false "keep the local branch"
 	DEFINE_boolean 'force_delete' false "force delete hotfix branch after finish" D
 	DEFINE_boolean 'notag' false "don't tag this hotfix" n
 	DEFINE_boolean 'nobackmerge' false "don't back-merge $MASTER_BRANCH, or tag if applicable, in $DEVELOP_BRANCH " b
 	DEFINE_boolean 'squash' false "squash release during merge" S
-	DEFINE_boolean 'squash-info' false "add branch info during squash" z
+	DEFINE_boolean 'squash-info' false "add branch info during squash"
 	DEFINE_string  'tagname' "" "use the given tag name" T
 
 	# Override defaults with values from config
@@ -700,13 +705,13 @@ r,[no]remote          Delete remote branch
 	if ( git_is_branch_merged_into "$BRANCH" "$MASTER_BRANCH" && git_is_branch_merged_into "$BRANCH" "$DEVELOP_BRANCH" ); then
 		git_do branch -d "$BRANCH" || die "Could not delete the $BRANCH."
 		if flag remote; then
-			git_do push "$ORIGIN" :"$BRANCH" || die "Could not delete the remote $BRANCH in $ORIGIN."
+			git_remote_branch_delete "$BRANCH"
 		fi
 	else
 		if flag force; then
 			git_do branch -D "$BRANCH" || die "Could not delete the $BRANCH."
 			if flag remote; then
-				git_do push "$ORIGIN" :"$BRANCH" || die "Could not delete the remote $BRANCH in $ORIGIN."
+				git_remote_branch_delete "$BRANCH"
 			fi
 		else
 			die "Hotfix branch '$BRANCH' has been not been merged in branch '$MASTER_BRANCH' and/or branch '$DEVELOP_BRANCH'. Use -f to force the deletion."
@@ -722,4 +727,16 @@ r,[no]remote          Delete remote branch
 	flag remote && echo "- Hotfix branch '$BRANCH' in '$ORIGIN' has been deleted."
 	echo "- You are now on branch '$(git_current_branch)'"
 	echo
+}
+
+cmd_rename() {
+	OPTIONS_SPEC="\
+git flow hotfix rename <new_name> [<new_name>]
+
+Rename a given hotfix branch
+--
+h,help!          Show this help
+showcommands!    Show git commands while executing them
+"
+	gitflow_rename_branch "$@"
 }

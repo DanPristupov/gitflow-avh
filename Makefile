@@ -1,14 +1,3 @@
-# $Id$
-# vim:et:ft=sh:sts=2:sw=2
-#
-# git-flow -- A collection of Git extensions to provide high-level
-# repository operations for Vincent Driessen's branching model.
-#
-# A blog post presenting this model is found at:
-#    http://blog.avirtualhome.com/development-workflow-using-git/
-#
-# Feel free to contribute to this project at:
-#    http://github.com/petervanderdoes/gitflow
 #
 # Authors:
 # Copyright 2012-2017 Peter van der Does. All rights reserved.
@@ -37,30 +26,43 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-GITFLOW_VERSION=1.11.0
+prefix=/usr/local
 
-initialize() {
-	# A function can not be empty. Comments count as empty.
-	local FOO=''
-}
+datarootdir=$(prefix)/share
+docdir=$(datarootdir)/doc/gitflow
+# files that need mode 755
+EXEC_FILES=git-flow
 
-usage() {
-	OPTIONS_SPEC="\
-git flow version
+# files that need mode 644
+SCRIPT_FILES =git-flow-init
+SCRIPT_FILES+=git-flow-feature
+SCRIPT_FILES+=git-flow-bugfix
+SCRIPT_FILES+=git-flow-hotfix
+SCRIPT_FILES+=git-flow-release
+SCRIPT_FILES+=git-flow-support
+SCRIPT_FILES+=git-flow-version
+SCRIPT_FILES+=git-flow-log
+SCRIPT_FILES+=git-flow-config
+SCRIPT_FILES+=gitflow-common
+SCRIPT_FILES+=gitflow-shFlags
 
-Shows version information.
+# Hook files
+HOOK_FILES=$(wildcard hooks/*)
 
-For more specific help type the command followed by --help
---
-"
-	flags_help
-}
+all:
+	@echo "usage: make install"
+	@echo "       make uninstall"
 
-cmd_default() {
-	echo "$GITFLOW_VERSION (AVH Edition)"
-}
+install:
+	install -d -m 0755 $(prefix)/bin
+	install -d -m 0755 $(docdir)/hooks
+	install -m 0755 $(EXEC_FILES) $(prefix)/bin
+	install -m 0644 $(SCRIPT_FILES) $(prefix)/bin
+	install -m 0644 $(HOOK_FILES) $(docdir)/hooks
 
-cmd_help() {
-	usage
-	exit 0
-}
+uninstall:
+	test -d $(prefix)/bin && \
+	cd $(prefix)/bin && \
+	rm -f $(EXEC_FILES) $(SCRIPT_FILES)
+	test -d $(docdir) && \
+	rm -rf $(docdir)
